@@ -101,3 +101,14 @@ Contains modules that synthesize programs based on observation
 
 **learners/models.py**
 Contains classes that let us fit the weights of the programs
+
+## Citation 
+
+```
+@inproceedings{piriyakulkij2025poeworld,
+  Author = {Wasu Top Piriyakulkij and Yichao Liang and Hao Tang and Adrian Weller and Marta Kryven and Kevin Ellis},
+  Title = {PoE-World: Compositional World Modeling with Products of Programmatic Experts}, 
+  Year = {2025},
+  booktitle={Advances in Neural Information Processing Systems},
+}
+```
