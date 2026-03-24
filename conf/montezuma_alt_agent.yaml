@@ -9,7 +9,7 @@ world_model_learner:
 post_synthesis_mode: agent
 debug_mode: True
 
-checkpoint_folder: saved_checkpoints_MontezumaRevenge_basic17
+checkpoint_folder: saved_checkpoints_MontezumaRevenge_basic17  # Reuse non-alt checkpoints.
 
 agent:
   initial_budget_iterations: 0

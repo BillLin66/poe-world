@@ -12,4 +12,4 @@ debug_mode: True
 agent:
   initial_budget_iterations: 4000
 
-break_g2: True  
+break_g2: True

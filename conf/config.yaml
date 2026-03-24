@@ -1,8 +1,8 @@
 defaults:
   - _self_
 
-method: poe
-post_synthesis_mode: 'run'
+method: poe  # World model backend.
+post_synthesis_mode: 'run'  # run / agent / evaluate / nothing
 task: MontezumaRevenge
 seed: 0
 random_seed: 0
@@ -10,23 +10,23 @@ random_seed: 0
 multi_core: False
 n_cpu: 8
 
-obs_suffix: '_basic'
-obs_index: -1
+obs_suffix: '_basic'  # Observation dataset suffix.
+obs_index: -1  # -1 means use all observations.
 obs_index_length: 1
 
 provider: openrouter
-database_path: null
-use_memory: False
+database_path: null  # LLM cache DB path; null = auto.
+use_memory: False  # Load cache DB into memory.
 
-checkpoint_folder: null
-det_world_model: True
+checkpoint_folder: null  # Checkpoint folder; null = default.
+det_world_model: True  # Deterministic world-model rollout.
 
 imagined_atari_env:
-  start_at: 0
-  time_lag: 0
+  start_at: 0  # Replay N real actions before imagining.
+  time_lag: 0  # Render delay in seconds.
 
 world_model_learner:
-  obj_type: player
+  obj_type: player  # "all" learns every object type.
   exclude_score_objects: True
 
 obj_model_learner:
@@ -36,7 +36,7 @@ synthesizer:
   synth_window: 1
 
 moe:
-  continue_params: True
+  continue_params: True  # Reuse previous MoE params.
   lr: 1
   batch_size: 10000
   n_steps: 4
@@ -45,49 +45,40 @@ moe:
 
 agent:
   ignore_monster: False
-  initial_budget_iterations: 4000
-  budget_increase_mode: slow
+  initial_budget_iterations: 4000  # Initial planning budget.
+  budget_increase_mode: slow  # e.g. slow / constant
   prune_bad_edges: True
-  permanent_world_update: True
-  update_player_only: True
+  permanent_world_update: True  # Keep learned updates across goals.
+  update_player_only: True  # Only update player-related model pieces.
   get_rid_of_ghost: False
   use_ideal_plan: False
   n_goals_to_achieve: 1
-  quick_build_graph: False
-  fast_world_update: True
-  short_term_accuracy: 0.4
+  quick_build_graph: False  # Faster graph construction.
+  fast_world_update: True  # Faster but rougher online updates.
+  short_term_accuracy: 0.4  # Planning accuracy threshold.
   wait_between_goal: 20
   max_iter: 10
 
 mcts:
   exploration_weight: 0.01
-  sticky_actions: True
+  sticky_actions: True  # Model Atari sticky actions.
   future_length: 8
   n_tries: 20
-  
 
 montezuma_first_room: False
-
-break_g2: False
-
+break_g2: False  # Project-specific behavior switch.
 profiling: False
-
 in_depth_debugging: False
-
 heuristics: advanced
-
 recording: False
 recording_with_bb: False
-
 manual_control: False
 slow_manual_control: False
-
 debug_mode: False
-
-rope_mode: False
+rope_mode: False  # Special mode for rope-style transitions.
 
 eval:
-  set: 'random'
+  set: 'random'  # Eval split.
   mode: 'full'
 
-no_constraints: False
+no_constraints: False  # Ignore learned constraints.
