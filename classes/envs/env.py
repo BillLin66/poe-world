@@ -250,7 +250,8 @@ class ImaginedAtariEnv():
         self.object_tracker.update(self.init_obj_list)
         
         if config.imagined_atari_env.start_at != 0:
-            _, actions, _ = load_atari_observations(config.task.replace('Alt', '') + config.obs_suffix)
+            _, actions, _ = load_atari_observations(
+                config.task.replace('Alt', '') + config.obs_suffix, config)
             for i in range(config.imagined_atari_env.start_at):
                 self.init_obj_list, self.init_game_state = atari_env.step(actions[i])
                 self.object_tracker.update(self.init_obj_list)

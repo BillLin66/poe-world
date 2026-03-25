@@ -34,6 +34,7 @@ from classes.envs.renderer import get_human_renderer
 from classes.helper import set_global_constants, StateTransitionTriplet
 from openai_hf_interface import choose_provider
 from eval import evaluate_world_model
+from path_utils import with_data_root
 
 log = logging.getLogger('main')
 log.setLevel(logging.INFO)
@@ -89,11 +90,12 @@ def main(config: DictConfig):
     
     if config.database_path is None:
         config.database_path = f'completions_atari_{config.task.lower()}{"" if config.seed == 0 else f"_s{config.seed}"}.db'
+    config.database_path = with_data_root(config, config.database_path)
 
     # --- Synthesize world model ---
     # Load observations -- use the same observation for both non-prime and prime versions
     observations, actions, game_states = load_atari_observations(
-        config.task.replace('Alt', '') + config.obs_suffix)
+        config.task.replace('Alt', '') + config.obs_suffix, config)
 
     # Optional: Use subset of observations
     if config.obs_index != -1:

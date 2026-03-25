@@ -15,6 +15,7 @@ from classes.envs import *
 from classes.helper import StateTransitionTriplet, ObjListWithMemory, Constants, GameState
 from classes.envs.renderer import get_image_renderer, get_human_renderer
 from learners.world_model_learner import WorldModelLearner
+from path_utils import with_data_root
 
 log = logging.getLogger('main')
 
@@ -755,8 +756,10 @@ class Agent:
         world_model = self.world_learner.world_model
         self.n_abstract_features = len(world_model.constraints)
         self.null_abstract_state = str([-1] * self.n_abstract_features)
-        os.makedirs(f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}',
-                    exist_ok=True)
+        graph_dir = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}')
+        os.makedirs(graph_dir, exist_ok=True)
 
         # q: Queue of states to explore
         # visited_abs_states: Dictionary tracking which states have been visited
@@ -779,13 +782,17 @@ class Agent:
         num_iterations = 0
         num_job_finished = 0
         start_time = time.time()
+        tmp_params_dir = with_data_root(self.config, 'tmp_params')
         
-        log.info(f'To restart, create a restart_graph.txt file in tmp_params/{folder}')
+        log.info(
+            f'To restart, create a restart_graph.txt file in '
+            f'{os.path.join(tmp_params_dir, str(folder), "restart_graph.txt")}')
 
         # MAIN BUILD LOOP
         while len(q) > 0 or len(job_q) > 0 or len(running_jobs) > 0:
             # Check for restart file
-            restart_file = f"tmp_params/{folder}/restart_graph.txt"
+            restart_file = os.path.join(tmp_params_dir, str(folder),
+                                        "restart_graph.txt")
             if os.path.exists(restart_file) or time.time() - start_time > 3600 * 5:
                 if time.time() - start_time > 3600 * 5:
                     log.info('Restarting graph building process after 5 hours')
@@ -801,8 +808,11 @@ class Agent:
                 log.info("Resubmitting cancelled jobs...")
                 for out_id, args in running_jobs:
                     in_id = uuid.uuid4()
-                    in_pkl_path = f"tmp_params/{folder}/in-{in_id}.pickle"
-                    out_pkl_path = f"tmp_params/{folder}/{out_id}.pickle"
+                    folder_dir = os.path.join(tmp_params_dir, str(folder))
+                    os.makedirs(folder_dir, exist_ok=True)
+                    in_pkl_path = os.path.join(folder_dir, f'in-{in_id}.pickle')
+                    out_pkl_path = os.path.join(folder_dir,
+                                                f'{out_id}.pickle')
                     
                     with open(in_pkl_path, "wb") as f:
                         pickle.dump(args, f)
@@ -814,7 +824,8 @@ class Agent:
                         os.chdir("/home/wp237/active-infer-python-world")
                     else:
                         if self.config.debug_mode:
-                            log_path = f"tmp_params/{folder}/{out_id}.log"
+                            log_path = os.path.join(folder_dir,
+                                                    f'{out_id}.log')
                         else:
                             log_path = "/dev/null"
                         job_id = os.popen(f"sbatch --parsable run_mcts.py --in_file {in_pkl_path} --out_file {out_pkl_path} > {log_path} 2>&1").read().strip()
@@ -873,7 +884,7 @@ class Agent:
     def _prepare_world_model_for_jobs(self, world_model) -> str:
         """Removes callables, saves the stripped model, and logs its size."""
         no_callables_world_model = world_model.remove_callables()
-        path = save_world_model_to_path(no_callables_world_model)
+        path = save_world_model_to_path(no_callables_world_model, self.config)
         size_mb = os.path.getsize(path) / (1024 * 1024)
         log.info(f"Size of no-callable world_model: {size_mb:.2f} MB")
         return path
@@ -913,11 +924,13 @@ class Agent:
             args = job_q.pop(0)
             in_id = uuid.uuid4()
             out_id = uuid.uuid4()
-            os.makedirs(f"tmp_params/{folder}", exist_ok=True)
+            tmp_params_dir = with_data_root(self.config, 'tmp_params')
+            folder_dir = os.path.join(tmp_params_dir, str(folder))
+            os.makedirs(folder_dir, exist_ok=True)
 
             # Save input pickle
-            in_pkl_path = f"tmp_params/{folder}/in-{in_id}.pickle"
-            out_pkl_path = f"tmp_params/{folder}/{out_id}.pickle"
+            in_pkl_path = os.path.join(folder_dir, f'in-{in_id}.pickle')
+            out_pkl_path = os.path.join(folder_dir, f'{out_id}.pickle')
             with open(in_pkl_path, "wb") as f:
                 pickle.dump(args, f)
 
@@ -949,8 +962,8 @@ class Agent:
                     os.chdir("/home/wp237/active-infer-python-world")
                 else:
                     if self.config.debug_mode:
-                        log.info(f"tmp_params/{folder}/{out_id}.log")
-                        log_path = f"tmp_params/{folder}/{out_id}.log"
+                        log.info(os.path.join(folder_dir, f'{out_id}.log'))
+                        log_path = os.path.join(folder_dir, f'{out_id}.log')
                     else:
                         log_path = "/dev/null"
                     os.system(f"nohup python run_mcts.py "
@@ -972,7 +985,8 @@ class Agent:
         """
         to_remove_indices = []
         for idx, (out_id, args) in enumerate(running_jobs):
-            out_file = f"tmp_params/{folder}/{out_id}.pickle"
+            out_file = os.path.join(with_data_root(self.config, 'tmp_params'),
+                                    str(folder), f'{out_id}.pickle')
             if os.path.exists(out_file):
                 try:
                     with open(out_file, "rb") as f:
@@ -1027,14 +1041,16 @@ class Agent:
 
     def _try_load_graph(self, n_budget_iterations: int) -> bool:
         """Try to load graph from disk"""
-        os.makedirs(f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}',
-                    exist_ok=True)
+        graph_dir = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}')
+        os.makedirs(graph_dir, exist_ok=True)
         return self.load_graph(n_budget_iterations) is not False
 
     def _prepare_world_model(self, world_model: Any) -> str:
         """Prepare world model for parallel processing"""
         no_callables_model = world_model.remove_callables()
-        model_path = save_world_model_to_path(no_callables_model)
+        model_path = save_world_model_to_path(no_callables_model, self.config)
         size_mb = os.path.getsize(model_path) / (1024 * 1024)
         log.info(f"Size of no-callable world_model: {size_mb:.2f} MB")
         return model_path
@@ -1163,9 +1179,12 @@ class Agent:
             memory.add_obj_list_and_action(old_obj_list, a)
             frames.append(self.renderer.render(obj_list))
         log.info(f'Saving {filename}')
+        graph_dir = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}')
         save_frames_as_gif(
             frames,
-            f'./saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/',
+            graph_dir,
             filename)
 
     def save_abstract_plan_as_gif(self, states, filename, repeat_rate=30):
@@ -1174,9 +1193,12 @@ class Agent:
         for state in states:
             frames = frames + [self.renderer.render(state)] * repeat_rate
         log.info(f'Saving {filename}')
+        graph_dir = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}')
         save_frames_as_gif(
             frames,
-            f'./saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/',
+            graph_dir,
             filename)
 
     def save_edges_as_gif(self,
@@ -1202,15 +1224,19 @@ class Agent:
                 frames.append(self.renderer.render(obj_list))
             frames = frames + [self.renderer.render(neighbor)] * repeat_rate
         log.info(f'Saving {filename}')
+        graph_dir = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}')
         save_frames_as_gif(
             frames,
-            f'./saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/',
+            graph_dir,
             filename)
 
     def load_graph(self, n_budget_iterations):
         """Load abstract graph from disk"""
-        path = f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/'+\
-                f'graph_{n_budget_iterations}.pickle'
+        path = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/graph_{n_budget_iterations}.pickle')
         if os.path.exists(path):
             with open(path, "rb") as f:
                 data = pickle.load(f)
@@ -1227,10 +1253,12 @@ class Agent:
         log.info(
             f'Saving n_node_visited={len(hsh)} n_discovered_edges={len(skills_hsh)}'
         )
-        os.makedirs(f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}',
-                    exist_ok=True)
+        graph_dir = with_data_root(
+            self.config,
+            f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}')
+        os.makedirs(graph_dir, exist_ok=True)
         data = [q, hsh, skills_hsh, achievables_hsh]
         with open(
-                f'saved_graph_{"wc_" if self.config.method=="worldcoder" else "" if not self.config.no_constraints else "no-c_"}{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/graph_{n_budget_iterations}.pickle',
+                os.path.join(graph_dir, f'graph_{n_budget_iterations}.pickle'),
                 "wb") as f:
             pickle.dump(data, f)

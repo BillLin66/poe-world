@@ -49,6 +49,7 @@ from classes.game_utils import *
 from classes.helper import set_global_constants, StateTransitionTriplet
 from data.atari import load_atari_observations
 from learners.world_model_learner import PoEWorldLearner, WorldModelLearner
+from path_utils import with_data_root
 
 
 # Training configuration constants
@@ -128,7 +129,7 @@ def get_reward_fn(config: DictConfig) -> Callable:
 
 def create_world_as_env(config, rank = 0) -> 'WrappedOCAtariEnv':
     observations, actions, game_states = load_atari_observations(
-        config.task.replace('Alt', '') + config.obs_suffix)
+        config.task.replace('Alt', '') + config.obs_suffix, config)
     
     transitions = []
     for i in range(len(actions)):
@@ -374,8 +375,8 @@ def main(config: DictConfig):
     if config.ppo.policy_net_arch != [64, 64]:
         exp_name = exp_name + f"-arch{config.ppo.policy_net_arch}"
 
-    log_path = Path("baseline_logs", exp_name)
-    ckpt_path = Path("baseline_checkpoints", exp_name)
+    log_path = Path(with_data_root(config, 'baseline_logs'), exp_name)
+    ckpt_path = Path(with_data_root(config, 'baseline_checkpoints'), exp_name)
     log_path.mkdir(parents=True, exist_ok=True)
     ckpt_path.mkdir(parents=True, exist_ok=True)
 
@@ -411,6 +412,7 @@ def main(config: DictConfig):
             latest_ckpt = get_latest_checkpoint_by_steps(ckpt_path)
             model = create_model(vec_env, config, latest_ckpt=latest_ckpt)
         else:
+            config.pretrained_model_file = with_data_root(config, config.pretrained_model_file)
             model = create_model(vec_env, config, 
                                  load_ckpt=config.pretrained_model_file)
         model.set_logger(new_logger)

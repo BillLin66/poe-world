@@ -1,11 +1,21 @@
 defaults:
   - _self_
 
+hydra:
+  job:
+    # Do not change into Hydra's output directory
+    chdir: False
+  run:
+    dir: ${data_root}/outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: ${data_root}/outputs/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
 method: poe  # World model backend.
 post_synthesis_mode: 'run'  # run / agent / evaluate / nothing
 task: MontezumaRevenge
 seed: 0
 random_seed: 0
+data_root: .
 
 multi_core: False
 n_cpu: 8

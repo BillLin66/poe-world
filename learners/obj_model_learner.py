@@ -2,6 +2,7 @@ from typing import Optional, List, Tuple, Union, Awaitable
 import asyncio
 import dill as pickle
 import logging
+import os
 from openai_hf_interface import create_llm
 from omegaconf import DictConfig
 
@@ -9,6 +10,7 @@ from learners.synthesizer import Synthesizer
 from learners.utils import *
 from learners.models import *
 from classes.helper import *
+from path_utils import with_data_root
 from programs import *
 
 log = logging.getLogger('main')
@@ -188,8 +190,12 @@ class ObjModelLearner:
             log.info(f'Current llm spending {self.llm.get_info()}')
 
             if self.processed_obs_count % self.save_freq == 0:
+                checkpoint_folder = self.config.checkpoint_folder
+                if checkpoint_folder is None:
+                    checkpoint_folder = f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}'
                 os.makedirs(
-                    f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/{self.obj_type}',
+                    with_data_root(
+                        self.config, f'{checkpoint_folder}/{self.obj_type}'),
                     exist_ok=True)
                 self.save()
 
@@ -232,8 +238,11 @@ class ObjModelLearner:
         # Update checkpoint
         self.processed_obs_count = indices[-1] + 1
 
+        checkpoint_folder = self.config.checkpoint_folder
+        if checkpoint_folder is None:
+            checkpoint_folder = f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}'
         os.makedirs(
-            f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/{self.obj_type}',
+            with_data_root(self.config, f'{checkpoint_folder}/{self.obj_type}'),
             exist_ok=True)
         self.save()
 
@@ -528,13 +537,13 @@ class ObjModelLearner:
 
     def _get_checkpoint_path(self, checkpoint: Optional[int]) -> str:
         """Gets the file path for the checkpoint"""
-        if self.config.checkpoint_folder is not None:
-            checkpoint_folder = self.config.checkpoint_folder
-        else:
+        checkpoint_folder = self.config.checkpoint_folder
+        if checkpoint_folder is None:
             checkpoint_folder = f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}'
 
         checkpoint_str = 'final' if checkpoint is None else str(checkpoint)
-        path = f'{checkpoint_folder}/{self.obj_type}/{checkpoint_str}.pickle'
+        path = with_data_root(
+            self.config, f'{checkpoint_folder}/{self.obj_type}/{checkpoint_str}.pickle')
         return path
 
     def _load_9_tuple_format(self, data: tuple) -> None:
@@ -571,8 +580,13 @@ class ObjModelLearner:
         # Saves current model state to disk.
         log.info(
             f'Saving checkpoint {self.processed_obs_count} final = {final}')
+        checkpoint_folder = self.config.checkpoint_folder
+        if checkpoint_folder is None:
+            checkpoint_folder = f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}'
+        checkpoint_dir = with_data_root(
+            self.config, f'{checkpoint_folder}/{self.obj_type}')
         os.makedirs(
-            f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/{self.obj_type}',
+            checkpoint_dir,
             exist_ok=True)
         data = [
             self.moe_non_creation.rules, self.moe_non_creation.params,
@@ -586,13 +600,12 @@ class ObjModelLearner:
         # with open(f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/reasoner_{self.obj_type}_{self.processed_obs_count}.pickle', "wb") as f:
         #     pickle.dump((self.moe_non_creation, self.moe_creation), f)
         if final:
-            with open(
-                    f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/{self.obj_type}/final.pickle',
-                    "wb") as f:
+            with open(os.path.join(checkpoint_dir, 'final.pickle'), "wb") as f:
                 pickle.dump(data, f)
         else:
             with open(
-                    f'saved_checkpoints_{self.config.task}{self.config.obs_suffix}{"" if self.config.seed == 0 else f"_s{self.config.seed}"}/{self.obj_type}/{self.processed_obs_count}.pickle',
+                    os.path.join(checkpoint_dir,
+                                 f'{self.processed_obs_count}.pickle'),
                     "wb") as f:
                 pickle.dump(data, f)
 

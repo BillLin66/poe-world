@@ -19,6 +19,7 @@ from classes.envs.renderer import get_human_renderer
 from classes.helper import set_global_constants, StateTransitionTriplet
 from openai_hf_interface import choose_provider, create_llm
 from eval import evaluate_world_model
+from path_utils import with_data_root
 
 log = logging.getLogger('main')
 log.setLevel(logging.INFO)
@@ -539,6 +540,7 @@ def main(config: DictConfig):
     
     if config.database_path is None:
         config.database_path = f'completions_atari_{config.task.lower()}_react{"" if config.seed == 0 else f"_s{config.seed}"}.db'
+    config.database_path = with_data_root(config, config.database_path)
 
     renderer = get_human_renderer(config)
     atari_env = create_atari_env(config, config.task, renderer=renderer, skip_gameover_if_possible=False)

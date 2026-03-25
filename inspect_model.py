@@ -30,7 +30,7 @@ def main(config):
 
         # Load observations
         observations, actions, game_states = load_atari_observations(
-            config.task + config.obs_suffix)
+            config.task + config.obs_suffix, config)
 
         # Optional: Use subset of observations
         if config.obs_index != -1:

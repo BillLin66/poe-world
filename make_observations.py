@@ -14,6 +14,7 @@ from classes.helper import *
 from agents.utils import save_frames_as_mp4
 from classes.envs import *
 from classes.envs.renderer import get_human_renderer, get_image_renderer
+from path_utils import with_data_root
 log = logging.getLogger('main')
 log.setLevel(logging.INFO)
 
@@ -68,18 +69,21 @@ def make_observations(config: DictConfig, actions: List[str],
     # Save the video
     if config.recording:
         frames = recorder.end_recording()
+        video_dir = with_data_root(config, 'videos')
         save_frames_as_mp4(frames[max(0, config.obs_index):],
                            frameskip=env.frameskip,
-                           path='./videos/',
+                           path=video_dir,
                            filename=f'video_{name}.mp4')
 
     # Save the observations, actions, and game states
-    os.makedirs("saved_data", exist_ok=True)
-    with open(f'saved_data/{name}.pickle', "wb") as f:
+    save_dir = with_data_root(config, 'saved_data')
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, f'{name}.pickle')
+    with open(save_path, "wb") as f:
         pickle.dump((observations[max(0, config.obs_index):],
                      ret_actions[max(0, config.obs_index):],
                      game_states[max(0, config.obs_index):]), f)
-    print(f'Saved data to saved_data/{name}.pickle')
+    print(f'Saved data to {save_path}')
     print(f'Num ret_actions: {len(ret_actions[max(0, config.obs_index):])}')
 
 
@@ -94,8 +98,10 @@ def manual(config: DictConfig) -> None:
     observations, actions, game_states = env_player.run(
         slow=config.slow_manual_control)
     # save the demonstration
-    os.makedirs("saved_data", exist_ok=True)
-    save_fn = f'saved_data/obs_manual_{config.task}{config.obs_suffix}.pickle'
+    save_dir = with_data_root(config, 'saved_data')
+    os.makedirs(save_dir, exist_ok=True)
+    save_fn = os.path.join(
+        save_dir, f'obs_manual_{config.task}{config.obs_suffix}.pickle')
     with open(save_fn, "wb") as f:
         pickle.dump((observations, actions, game_states), f)
     print(f'Saved data to {save_fn}')

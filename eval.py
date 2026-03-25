@@ -137,7 +137,7 @@ def grab_transitions(config):
         observations, actions, game_states = make_random_observations(config, 1000)
     else:
         observations, actions, game_states = load_atari_observations(
-            config.task.replace('Alt', '') + config.obs_suffix)
+            config.task.replace('Alt', '') + config.obs_suffix, config)
     # observations, actions, game_states = load_atari_observations('manual_MontezumaRevenge_basic')
 
     # Optional: Use subset of observations
