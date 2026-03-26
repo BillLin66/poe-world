@@ -5,6 +5,7 @@
 *.pickle
 *.npy
 *.gif
+*.out
 
 .vscode/
 **.DS_Store**
