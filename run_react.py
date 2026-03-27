@@ -19,6 +19,7 @@ from classes.envs.renderer import get_human_renderer
 from classes.helper import set_global_constants, StateTransitionTriplet
 from openai_hf_interface import choose_provider, create_llm
 from eval import evaluate_world_model
+from llm_config import get_default_llm_model
 from path_utils import with_data_root
 
 log = logging.getLogger('main')
@@ -443,8 +444,7 @@ And DO NOT generate ACTION: THINK: more than three times in a row.
 def run_react(config, atari_env):
     # Create llm
     cache_mode = 'disk_to_memory' if config.use_memory else 'disk'
-    llm = create_llm('gpt-4o-2024-08-06' if config.provider ==
-                        'openai' else 'openai/gpt-4o-2024-08-06')
+    llm = create_llm(get_default_llm_model(config.provider))
     llm.setup_cache(cache_mode, database_path=config.database_path)
     llm.set_default_kwargs({'timeout': 60})
     

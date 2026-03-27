@@ -4,6 +4,7 @@ import dill as pickle
 import logging
 import os
 from openai_hf_interface import create_llm
+from llm_config import get_default_llm_model
 from omegaconf import DictConfig
 
 from learners.synthesizer import Synthesizer
@@ -45,8 +46,7 @@ class ObjModelLearner:
 
         # Create llm
         cache_mode = 'disk_to_memory' if self.config.use_memory else 'disk'
-        self.llm = create_llm('gpt-4o-2024-08-06' if self.config.provider ==
-                              'openai' else 'openai/gpt-4o-2024-08-06')
+        self.llm = create_llm(get_default_llm_model(self.config.provider))
         self.llm.setup_cache(cache_mode, database_path=config.database_path)
         self.llm.set_default_kwargs({'timeout': 60})
 

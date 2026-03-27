@@ -24,7 +24,7 @@ obs_suffix: '_basic'  # Observation dataset suffix.
 obs_index: -1  # -1 means use all observations.
 obs_index_length: 1
 
-provider: openrouter
+provider: openrouter  # openai / openrouter / vertex
 database_path: null  # LLM cache DB path; null = auto.
 use_memory: False  # Load cache DB into memory.
 

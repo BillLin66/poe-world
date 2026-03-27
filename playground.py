@@ -15,6 +15,7 @@ from pathlib import Path
 
 from classes.helper import set_global_constants
 from openai_hf_interface import choose_provider
+from llm_config import get_default_llm_model
 import numpy as np
 import random
 
@@ -27,7 +28,7 @@ def set_seed(seed):
 
 def setup(config):
     cache_mode = 'disk_to_memory' if config.use_memory else 'disk'
-    llm = create_llm('gpt-4o-2024-08-06')
+    llm = create_llm(get_default_llm_model(config.provider))
     llm.setup_cache(cache_mode, database_path=config.database_path)
     llm.set_default_kwargs({'timeout': 60})
     return llm
